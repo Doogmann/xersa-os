@@ -1,0 +1,7 @@
+build/
+*.o
+*.bin
+*.iso
+iso/boot/*.bin
+.vscode/ipch/
+*.log

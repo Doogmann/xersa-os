@@ -1,0 +1,18 @@
+INSTALLATION
+____________
+Prepare the Windows Host
+
+$vbm = $env:ProgramFiles + '/Oracle/VirtualBox/VBoxManage.exe'
+$lab = 'D:/VMLab'
+New-Item -ItemType Directory -Force -Path $lab/iso, $lab/vms, $lab/scripts | Out-Null
+& $vbm --version
+
+
+
+Internet
+    |
+ [Windows 11 host]---(host-only 192.168.56.0/24)---[dev] [srv-web] [srv-dns]
+    |                                                  |      |        |
+  (NAT)---------------(NAT Network 10.10.10.0/24)------+------+--------+
+
+ [kali]----(internal 10.66.0.0/24)----[target-1]      <- fully isolated
