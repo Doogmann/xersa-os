@@ -1,0 +1,171 @@
+INSTALLATION
+____________
+Prepare the Windows Host
+
+$vbm = $env:ProgramFiles + '/Oracle/VirtualBox/VBoxManage.exe'
+$lab = 'D:/VMLab'
+New-Item -ItemType Directory -Force -Path $lab/iso, $lab/vms, $lab/scripts | Out-Null
+& $vbm --version
+
+
+
+Internet
+    |
+ [Windows 11 host]---(host-only 192.168.56.0/24)---[dev] [srv-web] [srv-dns]
+    |                                                  |      |        |
+  (NAT)---------------(NAT Network 10.10.10.0/24)------+------+--------+
+
+ [kali]----(internal 10.66.0.0/24)----[target-1]      <- fully isolated
+ 
+Host
+labnet
+labhost / internal
+
+
+dev-ubuntu
+10.10.10.10
+192.168.56.10
+
+srv-web
+10.10.10.20
+192.168.56.20
+
+srv-dns
+10.10.10.30
+192.168.56.30
+
+kali
+none
+10.66.0.10'
+
+
+target-1
+none
+10.66.0.20
+
+
+
+
+
+5. Create the Networks
+# NAT Network with its own DHCP
+& $vbm natnetwork add --netname labnet --network 10.10.10.0/24 --enable --dhcp on
+
+# Host-only network (VirtualBox 7.x)
+& $vbm hostonlynet add --name labhost --netmask 255.255.255.0 --lower-ip 192.168.56.100 --upper-ip 192.168.56.200 --enable
+
+# The internal network needs no creation: any VM naming it joins it.
+& $vbm list natnetworks
+---------------------------------------------------------------------------------
+UID:            2c54eff1-0c37-4faa-a4d0-fd4e3daf5e44
+DHCP:            Disabled
+IPAddress:       169.254.55.159
+NetworkMask:     255.255.0.0
+IPV6Address:     fe80::846e:1003:1e2e:67e2
+IPV6NetworkMaskPrefixLength: 64
+HardwareAddress: 0a:00:27:00:00:07
+MediumType:      Ethernet
+Wireless:        No
+Status:          Up
+VBoxNetworkName: HostInterfaceNetworking-VirtualBox Host-Only Ethernet Adapter
+
+Name:            VirtualBox Host-Only Ethernet Adapter #2
+GUID:            de7826fa-f272-40c2-935d-bea1cf0707e5
+DHCP:            Disabled
+IPAddress:       192.168.56.1
+NetworkMask:     255.255.255.0
+IPV6Address:     fe80::c71e:7d5a:15f:9c31
+IPV6NetworkMaskPrefixLength: 64
+HardwareAddress: 0a:00:27:00:00:15
+MediumType:      Ethernet
+Wireless:        No
+Status:          Up
+VBoxNetworkName: HostInterfaceNetworking-VirtualBox Host-Only Ethernet Adapter #2
+
+
+Add a DHCP server to it, so VMs on that network get an address automatically.
+
+& $vbm dhcpserver add --interface='VirtualBox Host-Only Ethernet Adapter' --server-ip=192.168.56.2 --netmask=255.255.255.0 --lower-ip=192.168.56.100 --upper-ip=192.168.56.200 --enable
+
+
+
+
+
+
+
+
+
+
+
+$n = 'tmpl-ubuntu'
+$hostif = 'VirtualBox Host-Only Ethernet Adapter'
+$iso = "$lab/iso/ubuntu-26.04.1-live-server-amd64.iso"
+
+& $vbm createvm --name $n --platform-architecture x86 --ostype Ubuntu_64 --basefolder $lab/vms --register
+& $vbm modifyvm $n --memory 2048 --cpus 2 --vram 16 --firmware efi `
+  --nic1 natnetwork --nat-network1 labnet `
+  --nic2 hostonly --host-only-adapter2 $hostif `
+  --audio-driver none --clipboard-mode bidirectional
+& $vbm createmedium disk --filename "$lab/vms/$n/$n.vdi" --size 20480
+& $vbm storagectl $n --name SATA --add sata --controller IntelAhci
+& $vbm storageattach $n --storagectl SATA --port 0 --device 0 --type hdd --medium "$lab/vms/$n/$n.vdi"
+& $vbm storageattach $n --storagectl SATA --port 1 --device 0 --type dvddrive --medium $iso
+& $vbm showvminfo $n --machinereadable | Select-String 'name=|memory=|cpus=|nic1=|nic2='
+
+
+UBUNUT SERVER - xsera
+username: xsera
+password: qwe123
+
+
+ip -br a
+ping -c 3 ubuntu.com
+
+
+$lab/iso
+
+
+& $vbm dhcpserver add --interface='VirtualBox Host-Only Ethernet Adapter #2' --server-ip=192.168.56.2 --netmask=255.255.255.0 --lower-ip=192.168.56.100 --upper-ip=192.168.56.200 --enable
+& $vbm list dhcpservers
+
+$hostif = 'VirtualBox Host-Only Ethernet Adapter #2'
+
+
+Open (or create) C:/Users/mirsa/.ssh/config and add:
+
+Host dev-ubuntu
+    HostName 192.168.56.10
+    User xsera-1
+    IdentityFile ~/.ssh/id_ed25519
+
+
+
+
+    Start command:
+
+
+& $vbm startvm dev-ubuntu --type headless    # no VM window, work over SSH
+& $vbm startvm dev-ubuntu                    # with a VM window (to see boot problems)
+& $vbm list runningvms                       # what is running
+& $vbm controlvm dev-ubuntu acpipowerbutton  # clean shutdown
+& $vbm controlvm dev-ubuntu poweroff  
+
+
+
+
+GIT HUB
+
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin git@github.com:Doogmann/xersa-os.git
+git push -u origin main
+
+git remote set-url origin git@github.com:Doogmann/xersa-os.git
+git push -u origin main
+
+
+C:/VMLab/scripts/lab.ps1 start dev-ubuntu
+C:/VMLab/scripts/lab.ps1 stop dev-ubuntu
+C:/VMLab/scripts/lab.ps1 snap dev-ubuntu

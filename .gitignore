@@ -3,5 +3,4 @@ build/
 *.bin
 *.iso
 iso/boot/*.bin
-.vscode/ipch/
 *.log
